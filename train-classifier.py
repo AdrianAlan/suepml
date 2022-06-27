@@ -1,7 +1,7 @@
 import argparse
 import logging
 import matplotlib
-import matplotlib.pyplot as plti
+import matplotlib.pyplot as plt
 import numpy as np
 import os
 import sys
@@ -53,28 +53,30 @@ class Plotting():
     def __init__(self, save_dir):
         self.save_dir = save_dir
         plt.style.use('./misc/style.mplstyle')
-        self.colors = ['black', 'red']
-        self.lines = [(0, ()), (0, (1, 4)), (0, (6, 4)), (0, (6, 7, 1, 7))]
+        self.colors = ['orange', 'red', 'black']
         self.markers = ["s", "v", "o"]
 
-    def draw_loss(self, data_train, data_val, name):
+    def draw_loss(self, data_train, data_val, data_acc, name, label="Loss"):
         """Plots the training and validation loss"""
 
-        color = self.colors[0]
-
-        fig, ax = plt.subplots()
-        plt.xlabel("Epoch", horizontalalignment='right', x=1.0)
-        plt.ylabel("Loss", horizontalalignment='right', y=1.0)
-        plt.yscale("log")
-        plt.plot(data_train,
-                 linestyle=self.lines[0],
-                 color=color,
+        fig, ax1 = plt.subplots()
+        ax1.set_xlabel("Epoch", horizontalalignment='right', x=1.0)
+        ax1.set_ylabel("Loss", horizontalalignment='right', y=1.0)
+        ax1.tick_params(axis='y', labelcolor='red') 
+        ax1.plot(data_train,
+                 color=self.colors[0],
                  label='Training')
-        plt.plot(data_val,
-                 linestyle=self.lines[1],
-                 color=color,
+        ax1.plot(data_val,
+                 color=self.colors[1],
                  label='Validation')
-        ax.legend()
+        ax2 = ax1.twinx() 
+        ax2.set_ylabel('Accuracy', color='black') 
+        ax2.tick_params(axis='y', labelcolor='black') 
+        ax2.plot(data_acc,
+                 color=self.colors[2],
+                 label='Accuracy')
+        ax1.legend()
+        ax2.legend()
         plt.savefig('{}/loss-{}'.format(self.save_dir, name))
         plt.close(fig)
 
@@ -84,14 +86,15 @@ def get_data_loader(hdf5_source_path,
                     num_workers,
                     in_dim,
                     rank=0,
+                    boosted=False,
                     flip_prob=None,
-                    is_classifier=False,
                     shuffle=True):
 
     dataset = CalorimeterDataset(
         torch.device(rank),
         hdf5_source_path,
         in_dim,
+        boosted=boosted,
         flip_prob=flip_prob
     )
 
@@ -148,6 +151,7 @@ def execute(rank, world_size, name, dataset, training_pref, verbose):
                                    training_pref['workers'],
                                    dataset['in_dim'],
                                    rank,
+                                   boosted=training_pref['boosted'],
                                    flip_prob=0.5,
                                    shuffle=True)
 
@@ -156,6 +160,7 @@ def execute(rank, world_size, name, dataset, training_pref, verbose):
                                  training_pref['workers'],
                                  dataset['in_dim'],
                                  rank,
+                                 boosted=training_pref['boosted'],
                                  shuffle=False)
 
     # Build SSD network
@@ -190,6 +195,7 @@ def execute(rank, world_size, name, dataset, training_pref, verbose):
     scaler = GradScaler()
     verobse = verbose and rank == 0
     train_loss, val_loss = torch.tensor([]), torch.tensor([])
+    v_acc = torch.tensor([])
     acc, loss = AverageMeter('Accuracy'), AverageMeter('Loss')
 
     for epoch in range(1, training_pref['max_epochs']+1):
@@ -225,10 +231,7 @@ def execute(rank, world_size, name, dataset, training_pref, verbose):
         if rank == 0:
             logger.debug(info)
 
-        train_loss = torch.cat(
-            (train_loss, torch.tensor([loss.avg]).unsqueeze(1)),
-            1
-        )
+        train_loss = torch.cat((train_loss, torch.tensor([loss.avg])))
 
         if verbose:
             tr.close()
@@ -264,14 +267,16 @@ def execute(rank, world_size, name, dataset, training_pref, verbose):
 
             if rank == 0:
                 logger.debug(info)
-            vloss = torch.tensor([loss.avg]).unsqueeze(1)
-            val_loss = torch.cat((val_loss, vloss), 1)
+            v_acc = torch.cat((v_acc, torch.tensor([acc.avg])))
+            vloss = torch.tensor([loss.avg])
+            val_loss = torch.cat((val_loss, vloss))
 
             if verbose:
                 tr.close()
 
             plot.draw_loss(train_loss.cpu().numpy(),
                            val_loss.cpu().numpy(),
+                           v_acc.cpu().numpy(),
                            name)
 
             if rank == 0 and cp_es(vloss.sum(0), model):

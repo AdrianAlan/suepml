@@ -4,11 +4,17 @@ import torch
 
 class CalorimeterDataset(torch.utils.data.Dataset):
 
-    def __init__(self, rank, hdf5_source_path, in_dim, flip_prob=None):
+    def __init__(self,
+                 rank,
+                 hdf5_source_path,
+                 in_dim,
+                 boosted=False,
+                 flip_prob=None):
         """Generator for calorimeter and data"""
         self.rank = rank
         self.source = hdf5_source_path
         self.in_dim = in_dim
+        self.boosted = boosted
         self.flip_prob = flip_prob
 
     def __getitem__(self, index):
@@ -50,9 +56,14 @@ class CalorimeterDataset(torch.utils.data.Dataset):
         self.hdf5_dataset = h5py.File(self.source, 'r')
 
         self.labels = self.hdf5_dataset['label']
-        self.eta = self.hdf5_dataset['eta']
-        self.phi = self.hdf5_dataset['phi']
-        self.pt = self.hdf5_dataset['pt']
+        if self.boosted:
+            self.eta = self.hdf5_dataset['beta']
+            self.phi = self.hdf5_dataset['bphi']
+            self.pt = self.hdf5_dataset['bpt']
+        else:
+            self.eta = self.hdf5_dataset['eta']
+            self.phi = self.hdf5_dataset['phi']
+            self.pt = self.hdf5_dataset['pt']
 
         self.dataset_size = len(self.labels)
 

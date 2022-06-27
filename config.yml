@@ -20,6 +20,7 @@ dataset:
 training_pref:
  batch_size_train: 50
  batch_size_validation: 100
+ boosted: False
  learning_rate: 0.01
  max_epochs: 100
  patience: 50
