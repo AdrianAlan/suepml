@@ -1,0 +1,30 @@
+---
+dataset:
+ names:
+  - /eos/user/a/adpol/suepml/SUEPML-Train-0.h5
+  - /eos/user/a/adpol/suepml/SUEPML-Train-1.h5
+  - /eos/user/a/adpol/suepml/SUEPML-Train-2.h5
+  - /eos/user/a/adpol/suepml/SUEPML-Train-3.h5
+  - /eos/user/a/adpol/suepml/SUEPML-Val-0.h5
+  - /eos/user/a/adpol/suepml/SUEPML-Val-1.h5
+  - /eos/user/a/adpol/suepml/SUEPML-Val-2.h5
+  - /eos/user/a/adpol/suepml/SUEPML-Val-3.h5
+  - /eos/user/a/adpol/suepml/SUEPML-Test.h5
+  - /eos/user/a/adpol/suepml/SUEPML-Trial-0.h5
+  - /eos/user/a/adpol/suepml/SUEPML-Trial-1.h5
+  - /eos/user/a/adpol/suepml/SUEPML-Trial-2.h5
+  - /eos/user/a/adpol/suepml/SUEPML-Trial-3.h5
+ size:
+  - 25000
+  - 25000
+  - 25000
+  - 25000
+  - 25000
+  - 25000
+  - 25000
+  - 25000
+  - 100000
+  - 100
+  - 100
+  - 100
+  - 100
