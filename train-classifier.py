@@ -17,13 +17,20 @@ import yaml
 
 from suep.checkpoints import EarlyStopping
 from suep.generator import CalorimeterDataset
-from suepvision import smodels
 from torch.cuda.amp import GradScaler
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.optim import Adam, lr_scheduler
 from torch.utils.data import DataLoader
 from tqdm import trange
 from utils import IsValidFile
+
+from suepvision.smodels import (
+    LeNet5,
+    get_resnet18,
+    get_resnet50,
+    get_enet,
+    get_convnext
+)
 
 
 class AverageMeter(object):
@@ -62,16 +69,16 @@ class Plotting():
         fig, ax1 = plt.subplots()
         ax1.set_xlabel("Epoch", horizontalalignment='right', x=1.0)
         ax1.set_ylabel("Loss", horizontalalignment='right', y=1.0)
-        ax1.tick_params(axis='y', labelcolor='red') 
+        ax1.tick_params(axis='y', labelcolor='red')
         ax1.plot(data_train,
                  color=self.colors[0],
                  label='Training')
         ax1.plot(data_val,
                  color=self.colors[1],
                  label='Validation')
-        ax2 = ax1.twinx() 
-        ax2.set_ylabel('Accuracy', color='black') 
-        ax2.tick_params(axis='y', labelcolor='black') 
+        ax2 = ax1.twinx()
+        ax2.set_ylabel('Accuracy', color='black')
+        ax2.tick_params(axis='y', labelcolor='black')
         ax2.plot(data_acc,
                  color=self.colors[2],
                  label='Accuracy')
@@ -135,7 +142,13 @@ def set_logging(name, filename, verbose):
     return logger
 
 
-def execute(rank, world_size, name, dataset, training_pref, verbose):
+def execute(rank,
+            world_size,
+            name,
+            architecture,
+            dataset,
+            training_pref,
+            verbose):
 
     setup(rank, world_size)
 
@@ -164,7 +177,7 @@ def execute(rank, world_size, name, dataset, training_pref, verbose):
                                  shuffle=False)
 
     # Build SSD network
-    model = smodels.LeNet5()
+    model = eval(architecture)()
     model = nn.SyncBatchNorm.convert_sync_batchnorm(model).to(rank)
     if rank == 0:
         logger.debug('Model architecture:\n{}'.format(str(model)))
@@ -326,6 +339,7 @@ if __name__ == '__main__':
     mp.spawn(execute,
              args=(world_size,
                    args.name,
+                   config['architecture'],
                    config['dataset'],
                    config['training_pref'],
                    args.verbose),

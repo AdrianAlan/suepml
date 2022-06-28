@@ -1,4 +1,6 @@
 ---
+architecture: LeNet5
+
 dataset:
  train:
   - /eos/user/a/adpol/suep/Mini-SUEPML-Trial-0.h5

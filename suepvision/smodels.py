@@ -3,6 +3,13 @@ import torch.nn as nn
 import torch.nn.init as init
 import torch.nn.functional as F
 
+from torchvision.models import (
+    resnet18,
+    resnet50,
+    efficientnet_b4,
+    convnext_base
+)
+
 
 class LeNet5(nn.Module):
     def __init__(self):
@@ -25,6 +32,57 @@ class LeNet5(nn.Module):
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
         return x
+
+
+def get_resnet18():
+    model = resnet18(pretrained=True)
+    model.conv1 = nn.Conv2d(1,
+                            64,
+                            kernel_size=7,
+                            stride=2,
+                            padding=3,
+                            bias=False)
+    model.conv1.apply(weights_init)
+    model.fc = nn.Linear(512, 2, bias=True)
+    model.fc.apply(weights_init)
+    return model
+
+
+def get_resnet50():
+    model = resnet50(pretrained=True)
+    model.conv1 = nn.Conv2d(1,
+                            64,
+                            kernel_size=7,
+                            stride=2,
+                            padding=3,
+                            bias=False)
+    model.conv1.apply(weights_init)
+    model.fc = nn.Linear(2048, 2, bias=True)
+    model.fc.apply(weights_init)
+    return model
+
+
+def get_enet():
+    model = efficientnet_b4(pretrained=True)
+    model.features[0][0] = nn.Conv2d(1,
+                                     48,
+                                     kernel_size=(3, 3),
+                                     stride=(2, 2),
+                                     padding=(1, 1),
+                                     bias=False)
+    model.features[0][0].apply(weights_init)
+    model.classifier[1] = nn.Linear(1792, 2, bias=True)
+    model.classifier[1].apply(weights_init)
+    return model
+
+
+def get_convnext():
+    model = convnext_base(pretrained=True)
+    model.features[0][0] = nn.Conv2d(1, 128, kernel_size=(4, 4), stride=(4, 4))
+    model.features[0][0].apply(weights_init)
+    model.classifier[2] = nn.Linear(1024, 2, bias=True)
+    model.classifier[2].apply(weights_init)
+    return model
 
 
 def weights_init(m):
