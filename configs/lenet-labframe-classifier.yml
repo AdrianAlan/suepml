@@ -1,0 +1,32 @@
+---
+dataset:
+ train:
+  - /eos/user/a/adpol/suep/Mini-SUEPML-Train-0.h5
+  - /eos/user/a/adpol/suep/Mini-SUEPML-Train-1.h5
+  - /eos/user/a/adpol/suep/Mini-SUEPML-Train-2.h5
+  - /eos/user/a/adpol/suep/Mini-SUEPML-Train-3.h5
+ validation:
+  - /eos/user/a/adpol/suep/Mini-SUEPML-Val-0.h5
+  - /eos/user/a/adpol/suep/Mini-SUEPML-Val-1.h5
+  - /eos/user/a/adpol/suep/Mini-SUEPML-Val-2.h5
+  - /eos/user/a/adpol/suep/Mini-SUEPML-Val-3.h5
+ test: /path/to/test
+  - /eos/user/a/adpol/suep/Mini-SUEPML-Test.h5
+ in_dim:
+  - 1
+  - 14
+  - 18
+
+training_pref:
+ batch_size_train: 50
+ batch_size_validation: 100
+ boosted: False
+ learning_rate: 0.01
+ max_epochs: 100
+ patience: 50
+ weight_decay: 0.0005
+ workers: 0
+
+evaluation_pref:
+ batch_size: 100
+ workers: 0
