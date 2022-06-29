@@ -1,6 +1,9 @@
 import argparse
 import os
+import torch
 
+from suep.generator import CalorimeterDataset
+from torch.utils.data import DataLoader
 
 class IsReadableDir(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
@@ -23,3 +26,35 @@ class IsValidFile(argparse.Action):
                     '{0} is not a valid file'.format(prospective_file))
         else:
             setattr(namespace, self.dest, prospective_file)
+
+def collate_fn(batch):
+    transposed_data = list(zip(*batch))
+    inp = torch.stack(transposed_data[0], 0)
+    tgt = list(transposed_data[1])
+    return inp, tgt
+
+
+def get_data_loader(hdf5_source_path,
+                    batch_size,
+                    num_workers,
+                    in_dim,
+                    rank=0,
+                    boosted=False,
+                    flip_prob=None,
+                    shuffle=True):
+
+    dataset = CalorimeterDataset(
+        torch.device(rank),
+        hdf5_source_path,
+        in_dim,
+        boosted=boosted,
+        flip_prob=flip_prob
+    )
+
+    return DataLoader(
+        dataset,
+        batch_size=batch_size,
+        collate_fn=collate_fn,
+        num_workers=num_workers,
+        shuffle=shuffle
+    )

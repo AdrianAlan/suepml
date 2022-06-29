@@ -22,7 +22,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.optim import Adam, lr_scheduler
 from torch.utils.data import DataLoader
 from tqdm import trange
-from utils import IsValidFile
+from utils import IsValidFile, get_data_loader
 
 from suepvision.smodels import (
     LeNet5,
@@ -76,6 +76,7 @@ class Plotting():
         fig, ax1 = plt.subplots()
         ax1.set_xlabel("Epoch", horizontalalignment='right', x=1.0)
         ax1.set_ylabel("Loss", horizontalalignment='right', y=1.0)
+        ax1.set_yscale('log')
         ax1.tick_params(axis='y', labelcolor='red')
         ax1.plot(data_train,
                  color=self.colors[0],
@@ -93,39 +94,6 @@ class Plotting():
         ax2.legend()
         plt.savefig('{}/loss-{}'.format(self.save_dir, name))
         plt.close(fig)
-
-
-def get_data_loader(hdf5_source_path,
-                    batch_size,
-                    num_workers,
-                    in_dim,
-                    rank=0,
-                    boosted=False,
-                    flip_prob=None,
-                    shuffle=True):
-
-    dataset = CalorimeterDataset(
-        torch.device(rank),
-        hdf5_source_path,
-        in_dim,
-        boosted=boosted,
-        flip_prob=flip_prob
-    )
-
-    return DataLoader(
-        dataset,
-        batch_size=batch_size,
-        collate_fn=collate_fn,
-        num_workers=num_workers,
-        shuffle=shuffle
-    )
-
-
-def collate_fn(batch):
-    transposed_data = list(zip(*batch))
-    inp = torch.stack(transposed_data[0], 0)
-    tgt = list(transposed_data[1])
-    return inp, tgt
 
 
 def set_logging(name, filename, verbose):
@@ -165,13 +133,12 @@ def execute(rank,
 
     plot = Plotting("models")
 
-    # Initialize dataset
     train_loader = get_data_loader(dataset['train'][rank],
                                    training_pref['batch_size_train'],
                                    training_pref['workers'],
                                    dataset['in_dim'],
                                    rank,
-                                   boosted=training_pref['boosted'],
+                                   boosted=dataset['boosted'],
                                    flip_prob=0.5,
                                    shuffle=True)
 
@@ -180,20 +147,17 @@ def execute(rank,
                                  training_pref['workers'],
                                  dataset['in_dim'],
                                  rank,
-                                 boosted=training_pref['boosted'],
+                                 boosted=dataset['boosted'],
                                  shuffle=False)
 
-    # Build SSD network
     model = eval(architecture)()
     model = nn.SyncBatchNorm.convert_sync_batchnorm(model).to(rank)
     if rank == 0:
         logger.debug('Model architecture:\n{}'.format(str(model)))
 
-    # Data parallelization
     cudnn.benchmark = True
     net = DDP(model, device_ids=[rank])
 
-    # Set training objective parameters
     optimizer = Adam(
         net.parameters(),
         lr=training_pref['learning_rate'],
@@ -260,7 +224,6 @@ def execute(rank,
         acc.reset()
         loss.reset()
 
-        # Start model validation
         if verbose:
             tr = trange(len(val_loader), file=sys.stdout)
 
