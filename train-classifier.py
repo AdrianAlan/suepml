@@ -292,11 +292,16 @@ def execute(rank,
                            v_acc.cpu().numpy(),
                            name)
 
-            if rank == 0 and cp_es(vloss.sum(0), model):
-                break
+        flag_tensor = torch.tensor(0)
+        if rank == 0 and cp_es(vloss.sum(0), model):
+            flag_tensor += 1
+        dist.all_reduce(flag_tensor, op=torch.distributed.ReduceOp.SUM)
+        if flag_tensor == 1:
+            break
 
-            dist.barrier()
+        dist.barrier()
         scheduler.step()
+
     cleanup()
 
 
