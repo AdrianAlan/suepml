@@ -194,7 +194,7 @@ def execute(rank,
     )
     scheduler = lr_scheduler.MultiStepLR(
         optimizer,
-        milestones=np.arange(20, 100, 20),
+        milestones=np.arange(10, 50, 10),
         gamma=0.5
     )
 
