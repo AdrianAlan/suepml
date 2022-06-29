@@ -77,10 +77,6 @@ class CalorimeterDataset(torch.utils.data.Dataset):
         pixels = self.normalize(pixels)
         return pixels
 
-        pixels = torch.sparse.FloatTensor(i, v, torch.Size(self.in_dim))
-
-        return pixels.to_dense()
-
     def normalize(self, tensor):
         if tensor.sum():
             m = torch.mean(tensor)
