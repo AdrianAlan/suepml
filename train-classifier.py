@@ -33,6 +33,13 @@ from suepvision.smodels import (
 )
 
 
+SEED = 42
+np.random.seed(SEED)
+torch.manual_seed(SEED)
+torch.random.manual_seed(SEED)
+torch.cuda.manual_seed(SEED)
+
+
 class AverageMeter(object):
     """Computes and stores the average and current value"""
     def __init__(self, name, fmt=':1.5f'):
