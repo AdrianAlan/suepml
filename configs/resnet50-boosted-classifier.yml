@@ -3,32 +3,31 @@ architecture: get_resnet50
 
 dataset:
  train:
-  - /eos/user/a/adpol/suep/SUEPML-Trial-0.h5
-  - /eos/user/a/adpol/suep/SUEPML-Trial-1.h5
-  - /eos/user/a/adpol/suep/SUEPML-Trial-2.h5
-  - /eos/user/a/adpol/suep/SUEPML-Trial-3.h5
+  - /scratch/gpfs/ap6964/suepml/SUEPML-Train-0.h5
+  - /scratch/gpfs/ap6964/suepml/SUEPML-Train-1.h5
+  - /scratch/gpfs/ap6964/suepml/SUEPML-Train-2.h5
+  - /scratch/gpfs/ap6964/suepml/SUEPML-Train-3.h5
  validation:
-  - /eos/user/a/adpol/suep/SUEPML-Trial-0.h5
-  - /eos/user/a/adpol/suep/SUEPML-Trial-1.h5
-  - /eos/user/a/adpol/suep/SUEPML-Trial-2.h5
-  - /eos/user/a/adpol/suep/SUEPML-Trial-3.h5
- test: /path/to/test
-  - /eos/user/a/adpol/suep/SUEPML-Trial-0.h5
+  - /scratch/gpfs/ap6964/suepml/SUEPML-Val-0.h5
+  - /scratch/gpfs/ap6964/suepml/SUEPML-Val-1.h5
+  - /scratch/gpfs/ap6964/suepml/SUEPML-Val-2.h5
+  - /scratch/gpfs/ap6964/suepml/SUEPML-Val-3.h5
+ test:
+  - /scratch/gpfs/ap6964/suepml/SUEPML-Test.h5
  in_dim:
-  - 1
   - 280
   - 360
+ boosted: True
 
 training_pref:
- batch_size_train: 20
- batch_size_validation: 20
- boosted: True
- learning_rate: 0.01
- max_epochs: 20
- patience: 50
+ batch_size_train: 50
+ batch_size_validation: 50
+ learning_rate: 0.001
+ max_epochs: 50
+ patience: 20
  weight_decay: 0.0005
  workers: 0
 
 evaluation_pref:
- batch_size: 100
+ batch_size: 50
  workers: 0
