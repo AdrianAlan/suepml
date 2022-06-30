@@ -29,9 +29,7 @@ class IsValidFile(argparse.Action):
 
 def collate_fn(batch):
     transposed_data = list(zip(*batch))
-    inp = torch.stack(transposed_data[0], 0)
-    tgt = list(transposed_data[1])
-    return inp, tgt
+    return torch.stack(transposed_data[0], 0), transposed_data[1]
 
 
 def get_data_loader(hdf5_source_path,
@@ -40,16 +38,13 @@ def get_data_loader(hdf5_source_path,
                     in_dim,
                     rank=0,
                     boosted=False,
-                    flip_prob=None,
                     shuffle=True):
 
     dataset = CalorimeterDataset(
         torch.device(rank),
         hdf5_source_path,
         in_dim,
-        boosted=boosted,
-        flip_prob=flip_prob
-    )
+        boosted=boosted)
 
     return DataLoader(
         dataset,

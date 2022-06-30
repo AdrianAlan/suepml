@@ -7,7 +7,6 @@ import os
 import sys
 import torch
 import torch.backends.cudnn as cudnn
-import torch.cuda as tcuda
 import torch.distributed as dist
 import torch.multiprocessing as mp
 import torch.nn as nn
@@ -133,17 +132,19 @@ def execute(rank,
 
     plot = Plotting("models")
 
+    batch_size_train = training_pref['batch_size_train']
+    batch_size_validation = training_pref['batch_size_validation']
+
     train_loader = get_data_loader(dataset['train'][rank],
-                                   training_pref['batch_size_train'],
+                                   batch_size_train,
                                    training_pref['workers'],
                                    dataset['in_dim'],
                                    rank,
                                    boosted=dataset['boosted'],
-                                   flip_prob=0.5,
                                    shuffle=True)
 
     val_loader = get_data_loader(dataset['validation'][rank],
-                                 training_pref['batch_size_validation'],
+                                 batch_size_validation,
                                  training_pref['workers'],
                                  dataset['in_dim'],
                                  rank,
@@ -178,36 +179,32 @@ def execute(rank,
     criterion = nn.CrossEntropyLoss().to(rank)
     scaler = GradScaler()
     verobse = verbose and rank == 0
-    train_loss, val_loss = torch.tensor([]), torch.tensor([])
-    v_acc = torch.tensor([])
+    t_loss = torch.cuda.FloatTensor([], device=rank)
+    v_loss = torch.cuda.FloatTensor([], device=rank)
+    v_acc = torch.cuda.FloatTensor([], device=rank)
     acc, loss = AverageMeter('Accuracy'), AverageMeter('Loss')
-
     for epoch in range(1, training_pref['max_epochs']+1):
 
         net.train()
-        acc.reset()
         loss.reset()
 
         if verbose:
             tr = trange(len(train_loader), file=sys.stdout)
 
         for images, targets in train_loader:
-            count = len(targets)
-            targets = tcuda.LongTensor(targets, device=rank)
+            optimizer.zero_grad()
+
             outputs = net(images)
-            preds = torch.argmax(outputs, dim=1)
-            a = (targets == preds).sum() / count
+            targets = torch.cuda.LongTensor(targets, device=rank)
+
             l = criterion(outputs, targets)
-
-            acc.update(a)
-            loss.update(l)
-
             scaler.scale(l).backward()
             scaler.step(optimizer)
             scaler.update()
-            optimizer.zero_grad()
 
-            info = 'Epoch {}, {}, {}'.format(epoch, loss, acc)
+            loss.update(l.data)
+
+            info = 'Epoch {}, {}'.format(epoch, loss)
             if verbose:
                 tr.set_description(info)
                 tr.update(1)
@@ -215,7 +212,9 @@ def execute(rank,
         if rank == 0:
             logger.debug(info)
 
-        train_loss = torch.cat((train_loss, torch.tensor([loss.avg])))
+        t_loss = torch.cat(
+            (t_loss, torch.cuda.FloatTensor([loss.avg], device=rank))
+        )
 
         if verbose:
             tr.close()
@@ -230,18 +229,16 @@ def execute(rank,
         with torch.no_grad():
 
             for images, targets in val_loader:
-                count = len(targets)
-                targets = tcuda.LongTensor(targets, device=rank)
                 outputs = net(images)
                 preds = torch.argmax(outputs, dim=1)
+                targets = torch.cuda.LongTensor(targets, device=rank)
 
                 l = criterion(outputs, targets)
                 l = reduce_tensor(l.data)
-                a = (targets == preds).sum() / count
-                a = reduce_tensor(a.data)
+                loss.update(l.data)
 
-                acc.update(a)
-                loss.update(l)
+                a = (targets == preds).sum() / batch_size_validation
+                acc.update(a.data)
 
                 info = 'Validation, {}, {}'.format(loss, acc)
                 if verbose:
@@ -250,20 +247,22 @@ def execute(rank,
 
             if rank == 0:
                 logger.debug(info)
-            v_acc = torch.cat((v_acc, torch.tensor([acc.avg])))
-            vloss = torch.tensor([loss.avg])
-            val_loss = torch.cat((val_loss, vloss))
+            v_acc = torch.cat(
+                (v_acc, torch.cuda.FloatTensor([acc.avg], device=rank))
+            )
+            v = torch.cuda.FloatTensor([loss.avg], device=rank)
+            v_loss = torch.cat((v_loss, v))
 
             if verbose:
                 tr.close()
 
-            plot.draw_loss(train_loss.cpu().numpy(),
-                           val_loss.cpu().numpy(),
+            plot.draw_loss(t_loss.cpu().numpy(),
+                           v_loss.cpu().numpy(),
                            v_acc.cpu().numpy(),
                            name)
 
         flag_tensor = torch.tensor(0)
-        if rank == 0 and cp_es(vloss.sum(0), model):
+        if rank == 0 and cp_es(v.sum(0), model):
             flag_tensor += 1
         dist.all_reduce(flag_tensor, op=torch.distributed.ReduceOp.SUM)
         if flag_tensor == 1:

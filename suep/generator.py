@@ -4,25 +4,15 @@ import torch
 
 class CalorimeterDataset(torch.utils.data.Dataset):
 
-    def __init__(self,
-                 rank,
-                 hdf5_source_path,
-                 in_dim,
-                 boosted=False,
-                 flip_prob=None):
+    def __init__(self, rank, hdf5_source_path, in_dim, boosted=False):
         """Generator for calorimeter and data"""
         self.rank = rank
         self.source = hdf5_source_path
         self.in_dim = in_dim
         self.boosted = boosted
-        self.flip_prob = flip_prob
 
     def __getitem__(self, index):
 
-        if not hasattr(self, 'hdf5_dataset'):
-            self.open_hdf5()
-
-        labels = self.labels[index]
         x_phi = torch.cuda.LongTensor(
             self.phi[index],
             device=self.rank
@@ -37,13 +27,7 @@ class CalorimeterDataset(torch.utils.data.Dataset):
         )
         calorimeter = self.process_images(x_eta, x_phi, x_pt)
 
-        if self.flip_prob:
-            if torch.rand(1) < self.flip_prob:
-                calorimeter = self.flip_image(calorimeter, vertical=True)
-            if torch.rand(1) < self.flip_prob:
-                calorimeter = self.flip_image(calorimeter, vertical=False)
-
-        return calorimeter, labels
+        return calorimeter, self.labels[index]
 
     def __len__(self):
 
@@ -67,27 +51,17 @@ class CalorimeterDataset(torch.utils.data.Dataset):
 
         self.dataset_size = len(self.labels)
 
-    def process_images(self, etas, phis, pts):
-        c = torch.zeros(etas.size(1), dtype=torch.long).cuda(self.rank)
-        c = c.unsqueeze(0)
-        i = torch.cat((c, etas, phis), 0)
-        v = pts
-        pixels = torch.sparse.FloatTensor(i, v, torch.Size(self.in_dim))
+    def process_images(self, w, h, v):
+        i = torch.cat((w, h), 0)
+        pixels = torch.cuda.sparse.FloatTensor(
+            i, v, torch.Size(self.in_dim), device=self.rank)
         pixels = pixels.to_dense()
         pixels = self.normalize(pixels)
-        return pixels
+        return pixels.unsqueeze(0)
 
     def normalize(self, tensor):
-        if tensor.sum():
-            m = torch.mean(tensor)
-            s = torch.std(tensor)
+        m = torch.mean(tensor)
+        s = torch.std(tensor)
+        if s:
             return tensor.sub(m).div(s)
         return tensor
-
-    def flip_image(self, image, vertical=True):
-        if vertical:
-            axis = 1
-        else:
-            axis = 2
-        image = torch.flip(image, [axis])
-        return image
