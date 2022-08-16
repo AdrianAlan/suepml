@@ -10,10 +10,12 @@ import torch.backends.cudnn as cudnn
 import torch.distributed as dist
 import torch.multiprocessing as mp
 import torch.nn as nn
+import torch.nn.functional as F
 import torchvision.models as models
 import tqdm
 import yaml
 
+from suep.disco import distance_corr
 from suep.checkpoints import EarlyStopping
 from suep.generator import CalorimeterDataset
 from torch.cuda.amp import GradScaler
@@ -122,7 +124,8 @@ def execute(rank,
             architecture,
             dataset,
             training_pref,
-            verbose):
+            disco_mode,
+            verbose=False):
 
     setup(rank, world_size)
 
@@ -174,7 +177,7 @@ def execute(rank,
         cp_es = EarlyStopping(
             logger,
             patience=training_pref['patience'],
-            save_path='models/{}.pth'.format(name)
+            save_path='models/{}'.format(name)
         )
     criterion = nn.CrossEntropyLoss().to(rank)
     scaler = GradScaler()
@@ -182,22 +185,41 @@ def execute(rank,
     t_loss = torch.cuda.FloatTensor([], device=rank)
     v_loss = torch.cuda.FloatTensor([], device=rank)
     v_acc = torch.cuda.FloatTensor([], device=rank)
-    acc, loss = AverageMeter('Accuracy'), AverageMeter('Loss')
+    acc, loss = AverageMeter('Accuracy'), AverageMeter('Loss'),
+    correlation = AverageMeter('Correlation')
     for epoch in range(1, training_pref['max_epochs']+1):
 
         net.train()
         loss.reset()
-
         if verbose:
             tr = trange(len(train_loader), file=sys.stdout)
 
-        for images, targets in train_loader:
+        for images, targets, tracks, spher in train_loader:
+
             optimizer.zero_grad()
 
             outputs = net(images)
             targets = torch.cuda.LongTensor(targets, device=rank)
 
             l = criterion(outputs, targets)
+
+            if disco_mode:
+
+                if disco_mode == 1:
+                    value = torch.tensor(tracks).to(rank) + 0.
+                elif disco_mode == 2:
+                    value = torch.tensor(spher).to(rank) + 0.
+
+                pos = targets == 0
+                corr = distance_corr(
+                    F.softmax(outputs, dim=1)[:, 1][pos],
+                    value[pos],
+                    1
+                )
+                if torch.isnan(corr):
+                    corr = 0
+                l = l + corr
+
             scaler.scale(l).backward()
             scaler.step(optimizer)
             scaler.update()
@@ -221,6 +243,7 @@ def execute(rank,
 
         net.eval()
         acc.reset()
+        correlation.reset()
         loss.reset()
 
         if verbose:
@@ -228,19 +251,38 @@ def execute(rank,
 
         with torch.no_grad():
 
-            for images, targets in val_loader:
+            for images, targets, tracks, spher in val_loader:
                 outputs = net(images)
                 preds = torch.argmax(outputs, dim=1)
                 targets = torch.cuda.LongTensor(targets, device=rank)
 
                 l = criterion(outputs, targets)
+
+                if disco_mode:
+
+                    if disco_mode == 1:
+                        value = torch.tensor(tracks).to(rank) + 0.
+                    elif disco_mode == 2:
+                        value = torch.tensor(spher).to(rank) + 0.
+
+                    pos = targets == 0
+                    corr = distance_corr(
+                        F.softmax(outputs, dim=1)[:, 1][pos],
+                        value[pos],
+                        1
+                    )
+                    if torch.isnan(corr):
+                        corr = 0
+                    l = l + corr
+                    correlation.update(corr.data)
+
                 l = reduce_tensor(l.data)
                 loss.update(l.data)
 
                 a = (targets == preds).sum() / batch_size_validation
                 acc.update(a.data)
 
-                info = 'Validation, {}, {}'.format(loss, acc)
+                info = 'Validation, {}, {}, {}'.format(loss, acc, correlation)
                 if verbose:
                     tr.set_description(info)
                     tr.update(1)
@@ -297,6 +339,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser('Train SUEP Classifier')
     parser.add_argument('name', type=str, help='Model name')
+    parser.add_argument('disco_mode', nargs='?', type=int, help='Disco mode', default=0)
     parser.add_argument('-c', '--config',
                         action=IsValidFile,
                         type=str,
@@ -316,6 +359,7 @@ if __name__ == '__main__':
                    config['architecture'],
                    config['dataset'],
                    config['training_pref'],
+                   args.disco_mode,
                    args.verbose),
              nprocs=world_size,
              join=True)

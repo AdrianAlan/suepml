@@ -28,8 +28,8 @@ class IsValidFile(argparse.Action):
             setattr(namespace, self.dest, prospective_file)
 
 def collate_fn(batch):
-    transposed_data = list(zip(*batch))
-    return torch.stack(transposed_data[0], 0), transposed_data[1]
+    data = list(zip(*batch))
+    return torch.stack(data[0], 0), data[1], data[2], data[3]
 
 
 def get_data_loader(hdf5_source_path,

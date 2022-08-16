@@ -27,7 +27,7 @@ class CalorimeterDataset(torch.utils.data.Dataset):
         )
         calorimeter = self.process_images(x_eta, x_phi, x_pt)
 
-        return calorimeter, self.labels[index]
+        return calorimeter, self.labels[index], len(x_pt), self.spher[index]
 
     def __len__(self):
 
@@ -44,10 +44,12 @@ class CalorimeterDataset(torch.utils.data.Dataset):
             self.eta = self.hdf5_dataset['beta']
             self.phi = self.hdf5_dataset['bphi']
             self.pt = self.hdf5_dataset['bpt']
+            self.spher = self.hdf5_dataset['event_bsphericity']
         else:
             self.eta = self.hdf5_dataset['eta']
             self.phi = self.hdf5_dataset['phi']
             self.pt = self.hdf5_dataset['pt']
+            self.spher = self.hdf5_dataset['event_sphericity']
 
         self.dataset_size = len(self.labels)
 
