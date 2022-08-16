@@ -12,7 +12,7 @@ from torchvision.models import (
 
 
 class LeNet5(nn.Module):
-    def __init__(self):
+    def __init__(self, pretrained=True):
         super(LeNet5, self).__init__()
         self.conv1 = nn.Conv2d(1, 6, 5, padding=2).apply(weights_init)
         self.pool1 = nn.MaxPool2d(2, 2)
@@ -34,8 +34,8 @@ class LeNet5(nn.Module):
         return x
 
 
-def get_resnet18():
-    model = resnet18(pretrained=True)
+def get_resnet18(pretrained=True):
+    model = resnet18(pretrained=pretrained)
     model.conv1 = nn.Conv2d(1,
                             64,
                             kernel_size=7,
@@ -48,8 +48,8 @@ def get_resnet18():
     return model
 
 
-def get_resnet50():
-    model = resnet50(pretrained=True)
+def get_resnet50(pretrained):
+    model = resnet50(pretrained=pretrained)
     model.conv1 = nn.Conv2d(1,
                             64,
                             kernel_size=7,
@@ -62,8 +62,8 @@ def get_resnet50():
     return model
 
 
-def get_enet():
-    model = efficientnet_b4(pretrained=True)
+def get_enet(pretrained):
+    model = efficientnet_b4(pretrained=pretrained)
     model.features[0][0] = nn.Conv2d(1,
                                      48,
                                      kernel_size=(3, 3),
@@ -76,8 +76,8 @@ def get_enet():
     return model
 
 
-def get_convnext():
-    model = convnext_base(pretrained=True)
+def get_convnext(pretrained):
+    model = convnext_base(pretrained=pretrained)
     model.features[0][0] = nn.Conv2d(1, 128, kernel_size=(4, 4), stride=(4, 4))
     model.features[0][0].apply(weights_init)
     model.classifier[2] = nn.Linear(1024, 2, bias=True)
@@ -86,4 +86,4 @@ def get_convnext():
 
 
 def weights_init(m):
-    init.xavier_uniform_(m.weight.data)
+    init.kaiming_uniform_(m.weight.data)

@@ -27,7 +27,7 @@ class EarlyStopping:
             "Initiated early stopping with patience {}.".format(self.patience)
         )
 
-    def __call__(self, loss, model):
+    def __call__(self, loss, model, model2=None):
         """Veryfy if training should be terminated"""
 
         if loss < self.best_score - self.delta:
@@ -35,6 +35,8 @@ class EarlyStopping:
             self.best_score = loss  # Store best score
             if self.save_best:
                 self.save_checkpoint(model)
+                if model2:
+                    self.save_checkpoint(model2, "B")
         else:
             self.logger.debug("Validation loss did not decrease")
             self.counter += 1  # Increment counter
@@ -43,8 +45,8 @@ class EarlyStopping:
                 return True
         return False
 
-    def save_checkpoint(self, model):
+    def save_checkpoint(self, model, suffix=""):
         """Saves model when validation loss decrease."""
 
-        self.logger.debug("Saving model to {}".format(self.save_path))
-        torch.save(model.state_dict(), self.save_path)
+        self.logger.debug("Saving model to {}{}".format(self.save_path, suffix))
+        torch.save(model.state_dict(), "{}{}.pth".format(self.save_path, suffix))
