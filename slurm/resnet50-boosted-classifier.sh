@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --job-name=suepml8
-#SBATCH --output=/home/ap6964/suepml/logs/job8.log
+#SBATCH --job-name=suepml6
+#SBATCH --output=/home/ap6964/suepml/logs/job6.log
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1 

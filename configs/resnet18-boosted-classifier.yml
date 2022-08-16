@@ -22,7 +22,7 @@ dataset:
 training_pref:
  batch_size_train: 100
  batch_size_validation: 100
- learning_rate: 0.01
+ learning_rate: 0.005
  max_epochs: 50
  patience: 20
  weight_decay: 0.0005

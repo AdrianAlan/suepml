@@ -1,12 +1,12 @@
 #!/bin/bash
-#SBATCH --job-name=suepml6
-#SBATCH --output=/home/ap6964/suepml/logs/job6.log
+#SBATCH --job-name=suepml4
+#SBATCH --output=/home/ap6964/suepml/logs/job4.log
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1 
 #SBATCH --mem-per-cpu=8G
 #SBATCH --gres=gpu:4
-#SBATCH --time=04:00:00
+#SBATCH --time=06:00:00
 #SBATCH --mail-user=ap6964@princeton.edu
 #SBATCH --mail-type=begin
 #SBATCH --mail-type=end
