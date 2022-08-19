@@ -10,6 +10,7 @@ class CalorimeterDataset(torch.utils.data.Dataset):
         self.source = hdf5_source_path
         self.in_dim = in_dim
         self.boosted = boosted
+        self.open_hdf5()
 
     def __getitem__(self, index):
 
@@ -39,17 +40,18 @@ class CalorimeterDataset(torch.utils.data.Dataset):
     def open_hdf5(self):
         self.hdf5_dataset = h5py.File(self.source, 'r')
 
-        self.labels = self.hdf5_dataset['label']
+        self.labels = self.hdf5_dataset['label'][:]
+
         if self.boosted:
-            self.eta = self.hdf5_dataset['beta']
-            self.phi = self.hdf5_dataset['bphi']
-            self.pt = self.hdf5_dataset['bpt']
-            self.spher = self.hdf5_dataset['event_bsphericity']
+            self.eta = self.hdf5_dataset['beta'][:]
+            self.phi = self.hdf5_dataset['bphi'][:]
+            self.pt = self.hdf5_dataset['bpt'][:]
+            self.spher = self.hdf5_dataset['event_bsphericity'][:]
         else:
-            self.eta = self.hdf5_dataset['eta']
-            self.phi = self.hdf5_dataset['phi']
-            self.pt = self.hdf5_dataset['pt']
-            self.spher = self.hdf5_dataset['event_sphericity']
+            self.eta = self.hdf5_dataset['eta'][:]
+            self.phi = self.hdf5_dataset['phi'][:]
+            self.pt = self.hdf5_dataset['pt'][:]
+            self.spher = self.hdf5_dataset['event_sphericity'][:]
 
         self.dataset_size = len(self.labels)
 
