@@ -217,7 +217,7 @@ def execute(rank,
                     1
                 )
                 if torch.isnan(corr):
-                    corr = 0
+                    corr = torch.tensor(0).to(rank)
                 l = l + corr
 
             scaler.scale(l).backward()
@@ -272,7 +272,7 @@ def execute(rank,
                         1
                     )
                     if torch.isnan(corr):
-                        corr = 0
+                        corr = torch.tensor(0).to(rank)
                     l = l + corr
                     correlation.update(corr.data)
 

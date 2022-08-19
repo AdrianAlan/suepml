@@ -48,7 +48,7 @@ def get_resnet18(pretrained=True):
     return model
 
 
-def get_resnet50(pretrained):
+def get_resnet50(pretrained=True):
     model = resnet50(pretrained=pretrained)
     model.conv1 = nn.Conv2d(1,
                             64,

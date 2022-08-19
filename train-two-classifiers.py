@@ -211,6 +211,7 @@ def execute(rank,
         for images, targets, tracks, spher in train_loader:
 
             optimizerA.zero_grad()
+            optimizerB.zero_grad()
 
             outputsA = netA(images)
             outputsB = netB(images)
@@ -226,7 +227,7 @@ def execute(rank,
                 1
             )
             if torch.isnan(corr):
-                corr = 0
+                corr = torch.tesor(0).to(rank)
             l = lA + lB + corr
 
             scaler.scale(l).backward()
@@ -278,7 +279,7 @@ def execute(rank,
                     1
                 )
                 if torch.isnan(corr):
-                    corr = 0
+                    corr = torch.tesor(0).to(rank)
                 l = lA + lB + corr
                 correlation.update(corr.data)
 
